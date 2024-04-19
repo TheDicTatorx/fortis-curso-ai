@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import pickle
+from sklearn.metrics import ConfusionMatrixDisplay, classification_report
 
 import streamlit as st
 from streamlit.hello.utils import show_code
@@ -42,6 +43,7 @@ def leer_csv():
 
 @st.cache_data
 def limpieza_datos(data):
+    data.drop(columns='ID', inplace=True)
     data.dropna(inplace=True)
     data = data[data['SkinThickness'] < 1000]
     data = data[data['DiabetesPedigreeFunction'] > 0]
@@ -57,21 +59,46 @@ ml_model = load_model()
 custom_scaler = load_scaler()
 df = leer_csv()
 df_clean = limpieza_datos(df)
-df_escalado = escalar_datos(custom_scaler, df_clean)
+# df_escalado = escalar_datos(custom_scaler, df_clean)
+df_escalado = pd.DataFrame(custom_scaler.transform(df_clean),columns=df_clean.columns)
+df_corr = df_clean.corr()
 
-st.write(df_escalado)
+#===============SIDEBAR===============
+sidebar = st.sidebar
+sidebar.header('Sección de Filtros')
+
+preg = sidebar.number_input('Valor de Pregnancies')
+gluc = sidebar.number_input('Valor de Glucose')
+blood = sidebar.number_input('Valor de BloodPressure')
+skin = sidebar.number_input('Valor de SkinThickness')
+insu = sidebar.number_input('Valor de Insulin')
+bmi = sidebar.number_input('Valor de BMI')
+pedi = sidebar.number_input('Valor de DiabetesPedigreeFunction')
+age = sidebar.number_input('Valor de Age')
+
+valores_input = [preg, gluc, blood, skin, insu, bmi, pedi, age, 0]
+#=====================================
+
+st.header('Dashboard de Resultados Modelo ML')
+
+st.write('''Este ejemplo es para demostrar las capacidades de streamlit como visualizador.''')
 
 # Calculamos las predicciones de todo el dataset
 features = ['Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness', 'Insulin', 'BMI', 'DiabetesPedigreeFunction', 'Age']
+df_clean['Predicciones'] = ml_model.predict(df_escalado[features])
 
 if show_data:
     st.write(df_clean)
 
-st.header('Hola mundo!')
+valores_input_escalados = pd.DataFrame(custom_scaler.transform([valores_input]), columns=df_escalado.columns)
+st.write(f'''Resultado de una predicción con los valores indicados en el sidebar. 
+         Outcome: {ml_model.predict(valores_input_escalados[features])[0]}''')
 
 st.markdown('---')
 
 st.write('Esto es una prueba')
 
-fig = px.scatter(df, x="OG", y="FG", title="Risk Graph")
+st.write(df_corr)
+
+fig = px.scatter(df_clean, x="SkinThickness", y="BMI", title="Scatter plot")
 st.plotly_chart(fig)
